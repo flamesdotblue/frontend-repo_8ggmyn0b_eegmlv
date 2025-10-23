@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 function pickVoiceForPersona(persona) {
   const voices = window.speechSynthesis?.getVoices?.() || [];
   const preferFemale = persona === 'Vikki';
   const preferMale = persona === 'Chitti';
-  // Try to find an English voice that aligns with persona
   const enVoices = voices.filter(v => /en[-_]/i.test(v.lang) || v.lang === 'en-US' || v.lang === 'en-GB');
   const byGenderHint = enVoices.find(v => preferFemale ? /female|woman|siri|victoria|google uk english female/i.test(v.name) : /male|man|daniel|google us english/i.test(v.name));
   return byGenderHint || enVoices[0] || voices[0] || null;
@@ -94,7 +93,6 @@ export default function ChatPanel({ persona = 'Chitti', onAssistantSpeaking, onE
   // Ensure voices loaded on some browsers
   useEffect(() => {
     const id = setInterval(() => {
-      // Trigger load of voices
       if (window.speechSynthesis?.getVoices?.().length) clearInterval(id);
     }, 250);
     return () => clearInterval(id);
@@ -107,7 +105,6 @@ export default function ChatPanel({ persona = 'Chitti', onAssistantSpeaking, onE
     setMessages(newList);
     setInput('');
 
-    // Create a local reply
     const { text: reply, emotion } = await new Promise((resolve) => {
       setTimeout(() => resolve(localFriendBrain(text, persona)), 250);
     });

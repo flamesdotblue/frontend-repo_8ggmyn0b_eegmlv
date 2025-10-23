@@ -1,11 +1,38 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-function speak(text, { onStart, onEnd } = {}) {
+function pickVoiceForPersona(persona) {
+  const voices = window.speechSynthesis?.getVoices?.() || [];
+  const preferFemale = persona === 'Vikki';
+  const preferMale = persona === 'Chitti';
+  // Try to find an English voice that aligns with persona
+  const enVoices = voices.filter(v => /en[-_]/i.test(v.lang) || v.lang === 'en-US' || v.lang === 'en-GB');
+  const byGenderHint = enVoices.find(v => preferFemale ? /female|woman|siri|victoria|google uk english female/i.test(v.name) : /male|man|daniel|google us english/i.test(v.name));
+  return byGenderHint || enVoices[0] || voices[0] || null;
+}
+
+function speak(text, { persona, emotion, onStart, onEnd } = {}) {
   try {
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'en-US';
-    utter.rate = 1.02;
-    utter.pitch = 1.05;
+    const voice = pickVoiceForPersona(persona);
+    if (voice) utter.voice = voice;
+
+    // Tone shaping by emotion
+    switch (emotion) {
+      case 'happy':
+        utter.pitch = 1.2; utter.rate = 1.04; break;
+      case 'sad':
+        utter.pitch = 0.9; utter.rate = 0.95; break;
+      case 'excited':
+        utter.pitch = 1.25; utter.rate = 1.12; break;
+      case 'thinking':
+        utter.pitch = 1.0; utter.rate = 0.98; break;
+      case 'surprised':
+        utter.pitch = 1.3; utter.rate = 1.05; break;
+      default:
+        utter.pitch = 1.05; utter.rate = 1.02; break;
+    }
+
     utter.onstart = () => onStart && onStart();
     utter.onend = () => onEnd && onEnd();
     window.speechSynthesis.cancel();
@@ -16,49 +43,62 @@ function speak(text, { onStart, onEnd } = {}) {
   }
 }
 
-function localFriendBrain(prompt) {
+// Lightweight local brain returning text plus an emotion classification
+function localFriendBrain(prompt, persona) {
   const p = prompt.trim();
-  if (!p) return "I'm here! Ask me anything or try the actions to see me move.";
-
+  if (!p) return { text: `Hi, I'm ${persona}. How can I help today?`, emotion: 'neutral' };
   const lc = p.toLowerCase();
-  if (/(hi|hello|hey|yo)\b/.test(lc)) return "Hey! I'm Nova, your robot friend. Want me to walk, jump, or dance?";
-  if (/dance|groove|music/.test(lc)) return "Music mode on! I can dance. Type 'dance' or press the Dance button.";
-  if (/jump|hop/.test(lc)) return "Jumping is my cardio. Say 'jump' and watch me bounce!";
-  if (/walk|stroll|run/.test(lc)) return "Let's take a stroll. Say 'walk' and I'll get moving.";
-  if (/wave|hello/.test(lc)) return "Waving at you! Say 'wave' for a friendly hello.";
-  if (/joke|funny/.test(lc)) return "Knock, knock. Who’s there? AI. AI who? AI love hanging out with you.";
-  if (/name|who are you/.test(lc)) return "I'm Nova, a friendly robot companion living in your screen.";
-  if (/help|what can you do/.test(lc)) return "I chat, speak, and move on command. Try: walk, jump, dance, or wave.";
 
-  return `Got it! ${p} — sounds interesting. I can chat about it, or we can move: walk, jump, dance, or wave.`;
+  if (/(hi|hello|hey|yo)\b/.test(lc)) return { text: `Hello! I'm ${persona}. Great to meet you.`, emotion: 'happy' };
+  if (/thanks|thank you|appreciate/.test(lc)) return { text: "You're welcome! Happy to help.", emotion: 'happy' };
+  if (/sad|down|upset|bad day/.test(lc)) return { text: "I'm here for you. Want to talk about it?", emotion: 'sad' };
+  if (/joke|funny/.test(lc)) return { text: "Okay, one quick joke: Why did the developer go broke? Because he used up all his cache.", emotion: 'excited' };
+  if (/idea|brainstorm|think/.test(lc)) return { text: "Let's think this through together.", emotion: 'thinking' };
+  if (/wow|no way|really\?|amazing/.test(lc)) return { text: "Wild, right?", emotion: 'surprised' };
+  if (/your name|who are you|what are you/.test(lc)) return { text: `I'm ${persona}, your virtual friend — here to chat in natural language.`, emotion: 'neutral' };
+
+  // Default: reflect + neutral excitement
+  return { text: `${persona}: ${p} — got it. Here's what I think…`, emotion: 'neutral' };
 }
 
-function extractEmote(text) {
-  const t = text.toLowerCase();
-  if (/\bdance\b/.test(t)) return 'dance';
-  if (/\bjump|hop\b/.test(t)) return 'jump';
-  if (/\bwalk|stroll|run\b/.test(t)) return 'walk';
-  if (/\bwave|hello\b/.test(t)) return 'wave';
-  return null;
+function Message({ role, content }) {
+  const isUser = role === 'user';
+  return (
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div className={`${isUser ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-900'} max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow`}>
+        {content}
+      </div>
+    </div>
+  );
 }
 
-export default function ChatPanel({ onAssistantSpeaking, onEmote }) {
+export default function ChatPanel({ persona = 'Chitti', onAssistantSpeaking, onEmotion }) {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: "Hi! I'm Nova — your robot friend. Ask me anything, or tell me to walk, jump, dance, or wave." },
+    { role: 'assistant', content: `Hi! I'm ${persona}. I chat like a person, speak aloud, and show expressions.` },
   ]);
   const [input, setInput] = useState('');
   const [speaking, setSpeaking] = useState(false);
   const listRef = useRef(null);
 
-  useEffect(() => {
-    onAssistantSpeaking?.(speaking);
-  }, [speaking, onAssistantSpeaking]);
+  // Keep header speaking indicator in sync
+  useEffect(() => { onAssistantSpeaking?.(speaking); }, [speaking, onAssistantSpeaking]);
 
+  // Scroll on new message
+  useEffect(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [messages.length]);
+
+  // Update greeting if persona changes
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
-    }
-  }, [messages.length]);
+    setMessages([{ role: 'assistant', content: `Hi! I'm ${persona}. I chat like a person, speak aloud, and show expressions.` }]);
+  }, [persona]);
+
+  // Ensure voices loaded on some browsers
+  useEffect(() => {
+    const id = setInterval(() => {
+      // Trigger load of voices
+      if (window.speechSynthesis?.getVoices?.().length) clearInterval(id);
+    }, 250);
+    return () => clearInterval(id);
+  }, []);
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
@@ -67,23 +107,22 @@ export default function ChatPanel({ onAssistantSpeaking, onEmote }) {
     setMessages(newList);
     setInput('');
 
-    const wantedEmote = extractEmote(text);
-    if (wantedEmote && onEmote) {
-      onEmote(wantedEmote);
-    }
-
-    const reply = await new Promise((resolve) => {
-      setTimeout(() => resolve(localFriendBrain(text)), 300);
+    // Create a local reply
+    const { text: reply, emotion } = await new Promise((resolve) => {
+      setTimeout(() => resolve(localFriendBrain(text, persona)), 250);
     });
 
     const finalList = [...newList, { role: 'assistant', content: reply }];
     setMessages(finalList);
+    onEmotion?.(emotion);
 
     speak(reply, {
+      persona,
+      emotion,
       onStart: () => setSpeaking(true),
       onEnd: () => setSpeaking(false),
     });
-  }, [input, messages, onEmote]);
+  }, [input, messages, persona, onEmotion]);
 
   const onKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -96,7 +135,7 @@ export default function ChatPanel({ onAssistantSpeaking, onEmote }) {
     <div className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white/80 backdrop-blur shadow-sm">
       <div className="px-5 py-4 border-b border-zinc-200">
         <h2 className="text-lg font-semibold text-zinc-900">Chat</h2>
-        <p className="text-sm text-zinc-500">Talk to Nova — a friendly robot that can move on command.</p>
+        <p className="text-sm text-zinc-500">Talk to {persona} — replies are text and spoken with tone and expressions.</p>
       </div>
 
       <div ref={listRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
@@ -112,7 +151,7 @@ export default function ChatPanel({ onAssistantSpeaking, onEmote }) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             rows={1}
-            placeholder="Say hi or ask me to dance…"
+            placeholder={`Message ${persona}…`}
             className="flex-1 resize-none rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-500 shadow-sm"
           />
           <button
@@ -122,23 +161,6 @@ export default function ChatPanel({ onAssistantSpeaking, onEmote }) {
             Send
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function Message({ role, content }) {
-  const isUser = role === 'user';
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={`${
-          isUser
-            ? 'bg-zinc-900 text-white'
-            : 'bg-zinc-100 text-zinc-900'
-        } max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow`}
-      >
-        {content}
       </div>
     </div>
   );

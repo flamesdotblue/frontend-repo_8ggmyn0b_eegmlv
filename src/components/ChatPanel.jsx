@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 function speak(text, { onStart, onEnd } = {}) {
   try {
@@ -17,27 +17,34 @@ function speak(text, { onStart, onEnd } = {}) {
 }
 
 function localFriendBrain(prompt) {
-  // Lightweight, deterministic pseudo-AI to keep the UI functional without backend
   const p = prompt.trim();
   if (!p) return "I'm here! Ask me anything or try the actions to see me move.";
 
   const lc = p.toLowerCase();
-  if (/(hi|hello|hey|yo)\b/.test(lc)) return "Hey! I'm your virtual buddy. Want to walk, jump, or dance together?";
-  if (/dance|groove|music/.test(lc)) return "Cue the music! I can dance. Hit the Dance button and let's vibe.";
-  if (/jump|hop/.test(lc)) return "Jumping is my cardio. Tap Jump and watch me bounce!";
-  if (/walk|stroll|run/.test(lc)) return "Let’s take a stroll. Press Walk and I’ll get moving.";
-  if (/wave|hello/.test(lc)) return "Waving at you! Give the Wave button a try for a friendly hello.";
+  if (/(hi|hello|hey|yo)\b/.test(lc)) return "Hey! I'm Nova, your robot friend. Want me to walk, jump, or dance?";
+  if (/dance|groove|music/.test(lc)) return "Music mode on! I can dance. Type 'dance' or press the Dance button.";
+  if (/jump|hop/.test(lc)) return "Jumping is my cardio. Say 'jump' and watch me bounce!";
+  if (/walk|stroll|run/.test(lc)) return "Let's take a stroll. Say 'walk' and I'll get moving.";
+  if (/wave|hello/.test(lc)) return "Waving at you! Say 'wave' for a friendly hello.";
   if (/joke|funny/.test(lc)) return "Knock, knock. Who’s there? AI. AI who? AI love hanging out with you.";
-  if (/name|who are you/.test(lc)) return "I'm Nova, your friendly robot companion. I watch, I chat, and I dance.";
-  if (/help|what can you do/.test(lc)) return "I chat, speak out loud, and mirror vibes with motion. Ask me things or pick an action!";
+  if (/name|who are you/.test(lc)) return "I'm Nova, a friendly robot companion living in your screen.";
+  if (/help|what can you do/.test(lc)) return "I chat, speak, and move on command. Try: walk, jump, dance, or wave.";
 
-  // Generic empathetic response
   return `Got it! ${p} — sounds interesting. I can chat about it, or we can move: walk, jump, dance, or wave.`;
 }
 
-export default function ChatPanel({ onAssistantSpeaking }) {
+function extractEmote(text) {
+  const t = text.toLowerCase();
+  if (/\bdance\b/.test(t)) return 'dance';
+  if (/\bjump|hop\b/.test(t)) return 'jump';
+  if (/\bwalk|stroll|run\b/.test(t)) return 'walk';
+  if (/\bwave|hello\b/.test(t)) return 'wave';
+  return null;
+}
+
+export default function ChatPanel({ onAssistantSpeaking, onEmote }) {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: "Hi! I'm Nova — your virtual friend. I can track your cursor, chat, and move. Try saying hi or press an action." },
+    { role: 'assistant', content: "Hi! I'm Nova — your robot friend. Ask me anything, or tell me to walk, jump, dance, or wave." },
   ]);
   const [input, setInput] = useState('');
   const [speaking, setSpeaking] = useState(false);
@@ -48,7 +55,6 @@ export default function ChatPanel({ onAssistantSpeaking }) {
   }, [speaking, onAssistantSpeaking]);
 
   useEffect(() => {
-    // Auto-scroll to the bottom when new messages arrive
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
@@ -61,9 +67,13 @@ export default function ChatPanel({ onAssistantSpeaking }) {
     setMessages(newList);
     setInput('');
 
-    // Simulate typing delay and generate local reply
+    const wantedEmote = extractEmote(text);
+    if (wantedEmote && onEmote) {
+      onEmote(wantedEmote);
+    }
+
     const reply = await new Promise((resolve) => {
-      setTimeout(() => resolve(localFriendBrain(text)), 350);
+      setTimeout(() => resolve(localFriendBrain(text)), 300);
     });
 
     const finalList = [...newList, { role: 'assistant', content: reply }];
@@ -73,7 +83,7 @@ export default function ChatPanel({ onAssistantSpeaking }) {
       onStart: () => setSpeaking(true),
       onEnd: () => setSpeaking(false),
     });
-  }, [input, messages]);
+  }, [input, messages, onEmote]);
 
   const onKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -86,7 +96,7 @@ export default function ChatPanel({ onAssistantSpeaking }) {
     <div className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white/80 backdrop-blur shadow-sm">
       <div className="px-5 py-4 border-b border-zinc-200">
         <h2 className="text-lg font-semibold text-zinc-900">Chat</h2>
-        <p className="text-sm text-zinc-500">Talk to Nova — I also speak out loud.</p>
+        <p className="text-sm text-zinc-500">Talk to Nova — a friendly robot that can move on command.</p>
       </div>
 
       <div ref={listRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">

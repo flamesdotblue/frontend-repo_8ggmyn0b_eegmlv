@@ -22,10 +22,10 @@ export default function App() {
       <header className="sticky top-0 z-10 w-full border-b border-zinc-200 bg-white/80 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`h-2.5 w-2.5 rounded-full ${assistantSpeaking ? 'bg-green-500 animate-pulse' : 'bg-zinc-400'}`} />
-            <h1 className="text-base md:text-lg font-semibold">Nova — Your 3D Chat Friend</h1>
+            <div className={`${assistantSpeaking ? 'bg-green-500 animate-pulse' : 'bg-zinc-400'} h-2.5 w-2.5 rounded-full`} />
+            <h1 className="text-base md:text-lg font-semibold">Nova — Your 3D Robot Friend</h1>
           </div>
-          <div className="hidden md:block text-sm text-zinc-500">Head tracks your cursor • Speak enabled</div>
+          <div className="hidden md:block text-sm text-zinc-500">Follows your cursor • Speaks responses</div>
         </div>
       </header>
 
@@ -38,7 +38,7 @@ export default function App() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <ChatPanel onAssistantSpeaking={setAssistantSpeaking} />
+            <ChatPanel onAssistantSpeaking={setAssistantSpeaking} onEmote={handleEmote} />
             <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium">Actions</h3>

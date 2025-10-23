@@ -49,7 +49,7 @@ function Emote({ type }) {
   }
   if (type === 'wave') {
     return (
-      <div className={`${base} animate-[wave_1.8s_ease-in-out_infinite]`} role="img" aria-label="Robot waving">👋</div>
+      <div className={`${base} animate-[wave_1.8s_ease-in-out_infinite]`} role="img" aria-label="Robot waving">🤖</div>
     );
   }
   return null;

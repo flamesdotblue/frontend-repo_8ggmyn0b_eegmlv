@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Move, Hop, PartyPopper, Hand } from 'lucide-react';
+import { Play, Move, ArrowUp, PartyPopper, Hand } from 'lucide-react';
 
 export default function ActionsBar({ onEmote }) {
   const Button = ({ icon: Icon, label, action }) => (
@@ -16,7 +16,7 @@ export default function ActionsBar({ onEmote }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Button icon={Move} label="Walk" action="walk" />
-      <Button icon={Hop} label="Jump" action="jump" />
+      <Button icon={ArrowUp} label="Jump" action="jump" />
       <Button icon={PartyPopper} label="Dance" action="dance" />
       <Button icon={Hand} label="Wave" action="wave" />
       <button
